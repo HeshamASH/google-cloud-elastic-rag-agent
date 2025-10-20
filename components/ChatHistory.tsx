@@ -21,12 +21,12 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ sessions, activeSessionId, on
     }
     
     return (
-        <aside className="w-64 bg-slate-950 flex flex-col flex-shrink-0 border-r border-slate-800">
-            <div className="p-3 flex items-center justify-between border-b border-slate-800">
-                <h2 className="text-lg font-semibold text-gray-200">History</h2>
+        <aside className="w-64 bg-gray-50 flex flex-col flex-shrink-0 border-r border-gray-200">
+            <div className="p-3 flex items-center justify-between border-b border-gray-200">
+                <h2 className="text-lg font-semibold text-gray-800">History</h2>
                 <button 
                     onClick={onNewSession}
-                    className="p-2 text-slate-300 hover:bg-slate-800 rounded-lg"
+                    className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
                     aria-label="New chat"
                 >
                     <PlusIcon />
@@ -38,7 +38,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ sessions, activeSessionId, on
                     <div 
                         key={session.id} 
                         className={`group flex items-center justify-between p-2.5 rounded-md cursor-pointer transition-colors ${
-                            activeSessionId === session.id ? 'bg-cyan-800/50' : 'hover:bg-slate-800'
+                            activeSessionId === session.id ? 'bg-cyan-100/50' : 'hover:bg-gray-100'
                         }`}
                         onClick={() => onSelectSession(session.id)}
                     >
@@ -51,7 +51,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ sessions, activeSessionId, on
                                 e.stopPropagation();
                                 onDeleteSession(session.id);
                             }}
-                            className="p-1 text-slate-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="p-1 text-gray-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                             aria-label={`Delete chat: ${session.title}`}
                         >
                             <TrashIcon/>

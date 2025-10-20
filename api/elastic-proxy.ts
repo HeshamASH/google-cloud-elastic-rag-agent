@@ -57,6 +57,10 @@ export default async function handler(req: any, res: any) {
                 return res.status(200).json({ session: loadResponse._source });
 
             case 'loadAllSessions':
+                const indexExists = await esClient.indices.exists({ index: INDEX_NAME });
+                if (!indexExists) {
+                    return res.status(200).json({ sessions: {} });
+                }
                 const searchResponse = await esClient.search({
                     index: INDEX_NAME,
                     size: 100

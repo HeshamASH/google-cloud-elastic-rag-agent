@@ -163,7 +163,7 @@ const Message: React.FC<MessageProps> = ({ message, onSelectSource, onPlayAudio 
               <h4 className="text-xs text-slate-400 font-semibold mb-2">Sources Referenced</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {message.sources.map((source, index) => (
-                      <SourceDetailCard key={index} sourceResult={source} onSelectSource={() => onSelectSource(source.source)} />
+                      <SourceDetailCard key={index} sourceResult={source} onSelectSource={() => onSelectSource(source.source)} highlightedText={source.highlight?.content[0]} />
                   ))}
               </div>
           </div>

@@ -5,6 +5,14 @@ import { Buffer } from 'buffer';
 import { GoogleGenAI, Modality, Content, FunctionDeclaration, Type, Part } from "@google/genai";
 // Note: We need to import the full path for Vercel's bundler to work correctly
 import { getSystemInstruction, tools, mapHistoryToApi } from '../services/geminiService-server-utils';
+import { getClient, RAG_INDEX_NAME } from '../services/elasticClient';
+import { GoogleGenerativeAI } from '@google/genai';
+
+const getEmbedding = async (text: string) => {
+    const ai = new GoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY as string });
+    const embedding = await ai.embedText(text);
+    return embedding;
+};
 
 // This function will be deployed as a serverless function on Vercel
 export default async function handler(req: any, res: any) {
@@ -14,7 +22,7 @@ export default async function handler(req: any, res: any) {
 
     try {
         const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY as string });
-        const { chatHistory, mode, stream, textToSpeech } = req.body;
+        const { chatHistory, mode, stream, textToSpeech, model } = req.body;
 
         // Handle Text-to-Speech request
         if (textToSpeech) {
@@ -36,13 +44,34 @@ export default async function handler(req: any, res: any) {
         }
 
         const historyForAi = mapHistoryToApi(chatHistory);
+        const lastUserMessage = chatHistory[chatHistory.length - 1].content;
+
+        const esClient = getClient();
+        const vector = await getEmbedding(lastUserMessage);
+        const searchResponse = await esClient.search({
+            index: RAG_INDEX_NAME,
+            knn: {
+                field: 'embedding',
+                query_vector: vector,
+                k: 5,
+                num_candidates: 10,
+            },
+            highlight: {
+                fields: {
+                    content: {},
+                },
+            },
+        });
+        const searchResults = searchResponse.hits.hits;
+
+        const systemInstruction = `${getSystemInstruction(mode)}\n\nUse markdown to format your responses. Use headers and tables where appropriate.\n\nHere are some search results that might be relevant to the user's query:\n${JSON.stringify(searchResults)}`;
 
         // Handle Streaming request
         if (stream) {
             const result = await ai.models.generateContentStream({
-                model: 'gemini-2.5-flash',
+                model: model || 'gemini-2.5-flash',
                 contents: historyForAi,
-                config: { systemInstruction: getSystemInstruction(mode) }
+                config: { systemInstruction }
             });
 
             res.setHeader('Content-Type', 'text/plain; charset=utf-8');
@@ -56,17 +85,18 @@ export default async function handler(req: any, res: any) {
 
         // Handle Non-Streaming (Agentic) request
         const agentResponse = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: model || 'gemini-2.5-flash',
             contents: historyForAi,
             config: {
-                systemInstruction: getSystemInstruction(mode),
+                systemInstruction,
                 tools: mode === 'Business Analyst Agent' ? [{ functionDeclarations: tools }] : undefined,
             },
         });
 
         return res.status(200).json({
             text: agentResponse.text,
-            toolCalls: agentResponse.functionCalls
+            toolCalls: agentResponse.functionCalls,
+            sources: searchResults,
         });
 
     } catch (error: any) {
