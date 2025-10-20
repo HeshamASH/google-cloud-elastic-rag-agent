@@ -4,7 +4,8 @@ import { AppMode, ChatMessage } from '../types';
 // The new agentic turn function now calls our secure proxy
 export const runAgenticTurn = async (
     chatHistory: ChatMessage[],
-    mode: AppMode
+    mode: AppMode,
+    model: string
 ): Promise<{ text?: string; toolCalls?: any[] }> => {
     const response = await fetch('/api/gemini-proxy', {
         method: 'POST',
@@ -12,6 +13,7 @@ export const runAgenticTurn = async (
         body: JSON.stringify({
             chatHistory,
             mode,
+            model,
             stream: false // We need the full response for the agent's plan
         }),
     });

@@ -38,15 +38,17 @@ interface HeaderProps {
     onToggleFileSearch: () => void;
     onToggleHistory: () => void;
     isHistoryVisible: boolean;
+    selectedModel: string;
+    onModelChange: (model: string) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ mode, onModeChange, onToggleFileSearch, onToggleHistory, isHistoryVisible }) => {
+const Header: React.FC<HeaderProps> = ({ mode, onModeChange, onToggleFileSearch, onToggleHistory, isHistoryVisible, selectedModel, onModelChange }) => {
   return (
-    <header className="px-4 py-3 border-b border-slate-700/50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-between flex-shrink-0">
+    <header className="px-4 py-3 border-b border-gray-200 bg-white/70 backdrop-blur-sm flex items-center justify-between flex-shrink-0">
       <div className="flex items-center gap-3">
-        <button 
+        <button
             onClick={onToggleHistory}
-            className="p-2 -ml-2 text-slate-300 hover:bg-slate-800 rounded-lg"
+            className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-lg"
             aria-label="Toggle chat history"
         >
           {isHistoryVisible ? <MenuCloseIcon/> : <MenuOpenIcon/>}
@@ -54,22 +56,31 @@ const Header: React.FC<HeaderProps> = ({ mode, onModeChange, onToggleFileSearch,
         <div className="flex items-center gap-3">
             <ElasticLogo />
             <div>
-              <h1 className="text-lg font-bold text-gray-100 hidden sm:block">Elastic CodeMind</h1>
+              <h1 className="text-lg font-bold text-gray-800 hidden sm:block">Elastic CodeMind</h1>
             </div>
         </div>
       </div>
       <div className="flex items-center gap-2">
-         <select 
-            value={mode} 
+         <select
+            value={mode}
             onChange={(e) => onModeChange(e.target.value as AppMode)}
-            className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-300 text-sm font-semibold focus:ring-2 focus:ring-cyan-500 focus:outline-none transition duration-200 appearance-none"
+            className="bg-gray-100 border border-gray-300 rounded-lg px-3 py-2 text-gray-800 text-sm font-semibold focus:ring-2 focus:ring-cyan-500 focus:outline-none transition duration-200 appearance-none"
             aria-label="Select application mode"
           >
             {Object.values(AppMode).map(m => <option key={m} value={m}>{m}</option>)}
          </select>
-         <button 
+         <select
+            value={selectedModel}
+            onChange={(e) => onModelChange(e.target.value)}
+            className="bg-gray-100 border border-gray-300 rounded-lg px-3 py-2 text-gray-800 text-sm font-semibold focus:ring-2 focus:ring-cyan-500 focus:outline-none transition duration-200 appearance-none"
+            aria-label="Select AI model"
+          >
+            <option value="vertex-ai">Vertex AI</option>
+            <option value="gemini-2.5-flash-lite-preview-09-2025">Gemini Flash Lite</option>
+         </select>
+         <button
             onClick={onToggleFileSearch}
-            className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold rounded-lg border border-slate-700 transition-colors duration-200"
+            className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-semibold rounded-lg border border-gray-300 transition-colors duration-200"
             aria-label="Search files"
         >
             <SearchIcon />

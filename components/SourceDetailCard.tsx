@@ -4,6 +4,7 @@ import { ElasticResult } from '../types';
 interface SourceDetailCardProps {
   sourceResult: ElasticResult;
   onSelectSource: () => void;
+  highlightedText?: string;
 }
 
 const FileIcon: React.FC = () => (
@@ -12,9 +13,25 @@ const FileIcon: React.FC = () => (
     </svg>
 );
 
-const SourceDetailCard: React.FC<SourceDetailCardProps> = ({ sourceResult, onSelectSource }) => {
+const SourceDetailCard: React.FC<SourceDetailCardProps> = ({ sourceResult, onSelectSource, highlightedText }) => {
+    const renderHighlightedText = () => {
+        if (!highlightedText) {
+            return `...${sourceResult.contentSnippet}...`;
+        }
+        const parts = sourceResult.contentSnippet.split(new RegExp(`(${highlightedText})`, 'gi'));
+        return parts.map((part, index) =>
+            part.toLowerCase() === highlightedText.toLowerCase() ? (
+                <strong key={index} className="bg-yellow-400 text-slate-900">
+                    {part}
+                </strong>
+            ) : (
+                part
+            )
+        );
+    };
+
   return (
-    <div 
+    <div
       onClick={onSelectSource}
       className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50 hover:bg-slate-700/80 hover:border-cyan-600 transition-all duration-200 cursor-pointer"
     >
@@ -24,14 +41,14 @@ const SourceDetailCard: React.FC<SourceDetailCardProps> = ({ sourceResult, onSel
                 <p className="text-sm font-semibold text-cyan-400 truncate" title={sourceResult.source.fileName}>
                     {sourceResult.source.fileName}
                 </p>
-                <p className="text-xs text-slate-400 font-mono truncate" title={sourceResult.source.path}>
+                <p className="text-xs text-slate-400 truncate" title={sourceResult.source.path}>
                     {sourceResult.source.path}
                 </p>
             </div>
         </div>
         <div className="mt-2 pl-1">
-            <p className="text-xs text-slate-400 bg-slate-900/50 p-2 rounded-md font-mono whitespace-pre-wrap max-h-24 overflow-y-auto">
-                ...{sourceResult.contentSnippet}...
+            <p className="text-xs text-slate-400 bg-slate-900/50 p-2 rounded-md whitespace-pre-wrap max-h-24 overflow-y-auto">
+                {renderHighlightedText()}
             </p>
         </div>
     </div>

@@ -6,6 +6,16 @@ import { GoogleGenAI, Modality, Content, FunctionDeclaration, Type, Part } from 
 // Note: We need to import the full path for Vercel's bundler to work correctly
 import { getSystemInstruction, tools, mapHistoryToApi } from '../services/geminiService-server-utils';
 
+const searchElasticsearch = async (query: string) => {
+    const response = await fetch('http://localhost:3000/api/elastic-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'search', query }),
+    });
+    const data = await response.json();
+    return data.results;
+};
+
 // This function will be deployed as a serverless function on Vercel
 export default async function handler(req: any, res: any) {
     if (req.method !== 'POST') {
@@ -14,7 +24,7 @@ export default async function handler(req: any, res: any) {
 
     try {
         const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY as string });
-        const { chatHistory, mode, stream, textToSpeech } = req.body;
+        const { chatHistory, mode, stream, textToSpeech, model } = req.body;
 
         // Handle Text-to-Speech request
         if (textToSpeech) {
@@ -36,13 +46,20 @@ export default async function handler(req: any, res: any) {
         }
 
         const historyForAi = mapHistoryToApi(chatHistory);
+        const lastUserMessage = chatHistory[chatHistory.length - 1].content;
+        const searchResults = await searchElasticsearch(lastUserMessage);
+
+        const systemInstruction = {
+            ...getSystemInstruction(mode),
+            content: `${getSystemInstruction(mode).content}\n\nUse markdown to format your responses. Use headers and tables where appropriate.\n\nHere are some search results that might be relevant to the user's query:\n${JSON.stringify(searchResults)}`
+        };
 
         // Handle Streaming request
         if (stream) {
             const result = await ai.models.generateContentStream({
-                model: 'gemini-2.5-flash',
+                model: model || 'gemini-2.5-flash',
                 contents: historyForAi,
-                config: { systemInstruction: getSystemInstruction(mode) }
+                config: { systemInstruction }
             });
 
             res.setHeader('Content-Type', 'text/plain; charset=utf-8');
@@ -56,10 +73,10 @@ export default async function handler(req: any, res: any) {
 
         // Handle Non-Streaming (Agentic) request
         const agentResponse = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: model || 'gemini-2.5-flash',
             contents: historyForAi,
             config: {
-                systemInstruction: getSystemInstruction(mode),
+                systemInstruction,
                 tools: mode === 'Business Analyst Agent' ? [{ functionDeclarations: tools }] : undefined,
             },
         });

@@ -1,9 +1,17 @@
 // api/elastic-proxy.ts
 import { Client } from '@elastic/elasticsearch';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+const getEmbedding = async (text: string) => {
+    const ai = new GoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY as string });
+    const embedding = await ai.embedText(text);
+    return embedding;
+};
 
 const ELASTIC_CLOUD_ID = process.env.ELASTIC_CLOUD_ID;
 const ELASTIC_API_KEY = process.env.ELASTIC_API_KEY;
-const INDEX_NAME = 'codemind-chat-history';
+const HISTORY_INDEX_NAME = 'codemind-chat-history';
+const RAG_INDEX_NAME = 'codemind-rag-data';
 
 let client: Client | null = null;
 
@@ -20,11 +28,31 @@ const getClient = () => {
   return client;
 };
 
-const initializeIndex = async (esClient: Client) => {
-    const indexExists = await esClient.indices.exists({ index: INDEX_NAME });
+const initializeHistoryIndex = async (esClient: Client) => {
+    const indexExists = await esClient.indices.exists({ index: HISTORY_INDEX_NAME });
     if (!indexExists) {
-      await esClient.indices.create({ index: INDEX_NAME });
-      console.log(`Elasticsearch index "${INDEX_NAME}" created.`);
+      await esClient.indices.create({ index: HISTORY_INDEX_NAME });
+      console.log(`Elasticsearch index "${HISTORY_INDEX_NAME}" created.`);
+    }
+};
+
+const initializeRagIndex = async (esClient: Client) => {
+    const indexExists = await esClient.indices.exists({ index: RAG_INDEX_NAME });
+    if (!indexExists) {
+        await esClient.indices.create({
+            index: RAG_INDEX_NAME,
+            mappings: {
+                properties: {
+                    embedding: {
+                        type: 'dense_vector',
+                        dims: 768,
+                        index: true,
+                        similarity: 'cosine'
+                    }
+                }
+            }
+        });
+        console.log(`Elasticsearch index "${RAG_INDEX_NAME}" created.`);
     }
 };
 
@@ -35,17 +63,18 @@ export default async function handler(req: any, res: any) {
 
     try {
         const esClient = getClient();
-        const { action, session, sessionId } = req.body;
+        const { action, session, sessionId, query, documents } = req.body;
 
         switch (action) {
             case 'initialize':
-                await initializeIndex(esClient);
+                await initializeHistoryIndex(esClient);
+                await initializeRagIndex(esClient);
                 return res.status(200).json({ success: true, message: 'Initialization checked.' });
             
             case 'saveSession':
-                await initializeIndex(esClient); // Ensure index exists before writing
+                await initializeHistoryIndex(esClient); // Ensure index exists before writing
                 await esClient.index({
-                    index: INDEX_NAME,
+                    index: HISTORY_INDEX_NAME,
                     id: session.id,
                     document: session,
                     refresh: true
@@ -53,12 +82,12 @@ export default async function handler(req: any, res: any) {
                 return res.status(200).json({ success: true });
 
             case 'loadSession':
-                const loadResponse = await esClient.get({ index: INDEX_NAME, id: sessionId });
+                const loadResponse = await esClient.get({ index: HISTORY_INDEX_NAME, id: sessionId });
                 return res.status(200).json({ session: loadResponse._source });
 
             case 'loadAllSessions':
                 const searchResponse = await esClient.search({
-                    index: INDEX_NAME,
+                    index: HISTORY_INDEX_NAME,
                     size: 100
                 });
                 const sessions: Record<string, any> = {};
@@ -68,8 +97,27 @@ export default async function handler(req: any, res: any) {
                 return res.status(200).json({ sessions });
 
             case 'deleteSession':
-                await esClient.delete({ index: INDEX_NAME, id: sessionId, refresh: true });
+                await esClient.delete({ index: HISTORY_INDEX_NAME, id: sessionId, refresh: true });
                 return res.status(200).json({ success: true });
+
+            case 'index':
+                await initializeRagIndex(esClient);
+                const operations = documents.flatMap((doc: any) => [{ index: { _index: RAG_INDEX_NAME } }, doc]);
+                await esClient.bulk({ refresh: true, operations });
+                return res.status(200).json({ success: true });
+
+            case 'search':
+                const vector = await getEmbedding(query);
+                const ragSearchResponse = await esClient.search({
+                    index: RAG_INDEX_NAME,
+                    knn: {
+                        field: 'embedding',
+                        query_vector: vector,
+                        k: 5,
+                        num_candidates: 10
+                    }
+                });
+                return res.status(200).json({ results: ragSearchResponse.hits.hits });
 
             default:
                 return res.status(400).json({ message: 'Invalid action' });
