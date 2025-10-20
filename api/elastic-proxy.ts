@@ -1,6 +1,6 @@
 // api/elastic-proxy.ts
 import { Client } from '@elastic/elasticsearch';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI } from '@google/genai';
 import { getClient, HISTORY_INDEX_NAME, RAG_INDEX_NAME } from '../services/elasticClient';
 
 const getEmbedding = async (text: string) => {

@@ -6,7 +6,7 @@ import { GoogleGenAI, Modality, Content, FunctionDeclaration, Type, Part } from 
 // Note: We need to import the full path for Vercel's bundler to work correctly
 import { getSystemInstruction, tools, mapHistoryToApi } from '../services/geminiService-server-utils';
 import { getClient, RAG_INDEX_NAME } from '../services/elasticClient';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI } from '@google/genai';
 
 const getEmbedding = async (text: string) => {
     const ai = new GoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY as string });
