@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "index-data": "curl -X POST http://localhost:3000/api/elastic-proxy -H \"Content-Type: application/json\" -d \"{\\\"action\\\": \\\"indexData\\\"}\""
   },
   "dependencies": {
     "react": "^19.2.0",

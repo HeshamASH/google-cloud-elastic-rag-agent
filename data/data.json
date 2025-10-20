@@ -1,0 +1,23 @@
+[
+  {
+    "name": "Elasticsearch Basics",
+    "url": "https://www.elastic.co/guide/en/elasticsearch/reference/current/getting-started.html",
+    "summary": "An introduction to the basic concepts of Elasticsearch, including documents, indices, and simple queries.",
+    "content": "Elasticsearch is a distributed, RESTful search and analytics engine capable of solving a growing number of use cases. As the heart of the Elastic Stack, it centrally stores your data so you can search, index, and analyze it with speed. This document provides a basic overview of how to get started with Elasticsearch, including how to index documents, create an index, and perform simple searches.",
+    "category": "documentation"
+  },
+  {
+    "name": "Gemini API Overview",
+    "url": "https://ai.google.dev/docs/gemini_api_overview",
+    "summary": "An overview of the Gemini API, its models, and how to use it to build generative AI applications.",
+    "content": "The Gemini API gives you access to Google's latest large language models. This guide provides an overview of the Gemini API, including the available models, how to make API calls, and how to handle responses. Whether you're building a chatbot, generating text, or analyzing images, the Gemini API provides the tools you need to integrate generative AI into your applications.",
+    "category": "documentation"
+  },
+  {
+    "name": "Building a RAG Chatbot",
+    "url": "https://www.elastic.co/blog/building-a-rag-chatbot-with-elasticsearch-and-langchain",
+    "summary": "A tutorial on how to build a Retrieval-Augmented Generation (RAG) chatbot using Elasticsearch and LangChain.",
+    "content": "Retrieval-Augmented Generation (RAG) is a technique for building chatbots that can answer questions about private data. This tutorial walks you through the process of building a RAG chatbot using Elasticsearch as the vector store and LangChain to orchestrate the process. You'll learn how to load documents, create embeddings, and generate responses based on the retrieved information.",
+    "category": "tutorial"
+  }
+]

@@ -5,6 +5,7 @@ import { Buffer } from 'buffer';
 import { GoogleGenAI, Modality, Content, FunctionDeclaration, Type, Part } from "@google/genai";
 // Note: We need to import the full path for Vercel's bundler to work correctly
 import { getSystemInstruction, tools, mapHistoryToApi } from '../services/geminiService-server-utils';
+import { getClient, search as esSearch } from '../services/elastic';
 
 // This function will be deployed as a serverless function on Vercel
 export default async function handler(req: any, res: any) {
@@ -37,12 +38,21 @@ export default async function handler(req: any, res: any) {
 
         const historyForAi = mapHistoryToApi(chatHistory);
 
+        const lastUserMessage = historyForAi[historyForAi.length - 1].parts[0].text;
+
+        const esClient = getClient();
+        const searchResults = await esSearch(esClient, 'codemind-docs', lastUserMessage);
+
+        const context = searchResults.map((result: any) => result.content).join('\n\n');
+        const systemInstruction = getSystemInstruction(mode) + '\n\n' + 'Context:\n' + context;
+
+
         // Handle Streaming request
         if (stream) {
             const result = await ai.models.generateContentStream({
                 model: 'gemini-2.5-flash',
                 contents: historyForAi,
-                config: { systemInstruction: getSystemInstruction(mode) }
+                config: { systemInstruction }
             });
 
             res.setHeader('Content-Type', 'text/plain; charset=utf-8');
@@ -59,7 +69,7 @@ export default async function handler(req: any, res: any) {
             model: 'gemini-2.5-flash',
             contents: historyForAi,
             config: {
-                systemInstruction: getSystemInstruction(mode),
+                systemInstruction,
                 tools: mode === 'Business Analyst Agent' ? [{ functionDeclarations: tools }] : undefined,
             },
         });

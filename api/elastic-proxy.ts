@@ -1,32 +1,11 @@
 // api/elastic-proxy.ts
+import { getClient, createIndex, indexData, search as esSearch } from '../services/elastic';
 import { Client } from '@elastic/elasticsearch';
+import sampleData from '../data/data.json';
 
-const ELASTIC_CLOUD_ID = process.env.ELASTIC_CLOUD_ID;
-const ELASTIC_API_KEY = process.env.ELASTIC_API_KEY;
-const INDEX_NAME = 'codemind-chat-history';
 
-let client: Client | null = null;
-
-const getClient = () => {
-  if (!client) {
-    if (!ELASTIC_CLOUD_ID || !ELASTIC_API_KEY) {
-      throw new Error("Elasticsearch credentials are not configured on the server.");
-    }
-    client = new Client({
-      cloud: { id: ELASTIC_CLOUD_ID },
-      auth: { apiKey: ELASTIC_API_KEY }
-    });
-  }
-  return client;
-};
-
-const initializeIndex = async (esClient: Client) => {
-    const indexExists = await esClient.indices.exists({ index: INDEX_NAME });
-    if (!indexExists) {
-      await esClient.indices.create({ index: INDEX_NAME });
-      console.log(`Elasticsearch index "${INDEX_NAME}" created.`);
-    }
-};
+const CHAT_HISTORY_INDEX = 'codemind-chat-history';
+const DOCS_INDEX = 'codemind-docs';
 
 export default async function handler(req: any, res: any) {
     if (req.method !== 'POST') {
@@ -35,17 +14,22 @@ export default async function handler(req: any, res: any) {
 
     try {
         const esClient = getClient();
-        const { action, session, sessionId } = req.body;
+        const { action, session, sessionId, query } = req.body;
 
         switch (action) {
             case 'initialize':
-                await initializeIndex(esClient);
+                await createIndex(esClient, CHAT_HISTORY_INDEX);
+                await createIndex(esClient, DOCS_INDEX);
                 return res.status(200).json({ success: true, message: 'Initialization checked.' });
+
+            case 'indexData':
+                await indexData(esClient, DOCS_INDEX, sampleData);
+                return res.status(200).json({ success: true, message: 'Data indexed.' });
             
             case 'saveSession':
-                await initializeIndex(esClient); // Ensure index exists before writing
+                await createIndex(esClient, CHAT_HISTORY_INDEX); // Ensure index exists before writing
                 await esClient.index({
-                    index: INDEX_NAME,
+                    index: CHAT_HISTORY_INDEX,
                     id: session.id,
                     document: session,
                     refresh: true
@@ -53,12 +37,12 @@ export default async function handler(req: any, res: any) {
                 return res.status(200).json({ success: true });
 
             case 'loadSession':
-                const loadResponse = await esClient.get({ index: INDEX_NAME, id: sessionId });
+                const loadResponse = await esClient.get({ index: CHAT_HISTORY_INDEX, id: sessionId });
                 return res.status(200).json({ session: loadResponse._source });
 
             case 'loadAllSessions':
                 const searchResponse = await esClient.search({
-                    index: INDEX_NAME,
+                    index: CHAT_HISTORY_INDEX,
                     size: 100
                 });
                 const sessions: Record<string, any> = {};
@@ -68,8 +52,12 @@ export default async function handler(req: any, res: any) {
                 return res.status(200).json({ sessions });
 
             case 'deleteSession':
-                await esClient.delete({ index: INDEX_NAME, id: sessionId, refresh: true });
+                await esClient.delete({ index: CHAT_HISTORY_INDEX, id: sessionId, refresh: true });
                 return res.status(200).json({ success: true });
+
+            case 'search':
+                const searchResults = await esSearch(esClient, DOCS_INDEX, query);
+                return res.status(200).json({ results: searchResults });
 
             default:
                 return res.status(400).json({ message: 'Invalid action' });
