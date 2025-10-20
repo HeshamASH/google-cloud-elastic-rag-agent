@@ -40,11 +40,9 @@ export const indexData = async (client: Client, indexName: string, data: any[]) 
 export const search = async (client: Client, indexName: string, query: string) => {
   const response = await client.search({
     index: indexName,
-    body: {
-      query: {
-        match: {
-          content: query
-        }
+    query: {
+      match: {
+        content: query
       }
     }
   });
