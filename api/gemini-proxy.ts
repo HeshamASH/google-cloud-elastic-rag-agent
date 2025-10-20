@@ -5,15 +5,13 @@ import { Buffer } from 'buffer';
 import { GoogleGenAI, Modality, Content, FunctionDeclaration, Type, Part } from "@google/genai";
 // Note: We need to import the full path for Vercel's bundler to work correctly
 import { getSystemInstruction, tools, mapHistoryToApi } from '../services/geminiService-server-utils';
+import { getClient, RAG_INDEX_NAME } from '../services/elasticClient';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const searchElasticsearch = async (query: string) => {
-    const response = await fetch('http://localhost:3000/api/elastic-proxy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'search', query }),
-    });
-    const data = await response.json();
-    return data.results;
+const getEmbedding = async (text: string) => {
+    const ai = new GoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY as string });
+    const embedding = await ai.embedText(text);
+    return embedding;
 };
 
 // This function will be deployed as a serverless function on Vercel
@@ -47,12 +45,26 @@ export default async function handler(req: any, res: any) {
 
         const historyForAi = mapHistoryToApi(chatHistory);
         const lastUserMessage = chatHistory[chatHistory.length - 1].content;
-        const searchResults = await searchElasticsearch(lastUserMessage);
 
-        const systemInstruction = {
-            ...getSystemInstruction(mode),
-            content: `${getSystemInstruction(mode).content}\n\nUse markdown to format your responses. Use headers and tables where appropriate.\n\nHere are some search results that might be relevant to the user's query:\n${JSON.stringify(searchResults)}`
-        };
+        const esClient = getClient();
+        const vector = await getEmbedding(lastUserMessage);
+        const searchResponse = await esClient.search({
+            index: RAG_INDEX_NAME,
+            knn: {
+                field: 'embedding',
+                query_vector: vector,
+                k: 5,
+                num_candidates: 10,
+            },
+            highlight: {
+                fields: {
+                    content: {},
+                },
+            },
+        });
+        const searchResults = searchResponse.hits.hits;
+
+        const systemInstruction = `${getSystemInstruction(mode)}\n\nUse markdown to format your responses. Use headers and tables where appropriate.\n\nHere are some search results that might be relevant to the user's query:\n${JSON.stringify(searchResults)}`;
 
         // Handle Streaming request
         if (stream) {
@@ -83,7 +95,8 @@ export default async function handler(req: any, res: any) {
 
         return res.status(200).json({
             text: agentResponse.text,
-            toolCalls: agentResponse.functionCalls
+            toolCalls: agentResponse.functionCalls,
+            sources: searchResults,
         });
 
     } catch (error: any) {

@@ -1,31 +1,12 @@
 // api/elastic-proxy.ts
 import { Client } from '@elastic/elasticsearch';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getClient, HISTORY_INDEX_NAME, RAG_INDEX_NAME } from '../services/elasticClient';
 
 const getEmbedding = async (text: string) => {
     const ai = new GoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY as string });
     const embedding = await ai.embedText(text);
     return embedding;
-};
-
-const ELASTIC_CLOUD_ID = process.env.ELASTIC_CLOUD_ID;
-const ELASTIC_API_KEY = process.env.ELASTIC_API_KEY;
-const HISTORY_INDEX_NAME = 'codemind-chat-history';
-const RAG_INDEX_NAME = 'codemind-rag-data';
-
-let client: Client | null = null;
-
-const getClient = () => {
-  if (!client) {
-    if (!ELASTIC_CLOUD_ID || !ELASTIC_API_KEY) {
-      throw new Error("Elasticsearch credentials are not configured on the server.");
-    }
-    client = new Client({
-      cloud: { id: ELASTIC_CLOUD_ID },
-      auth: { apiKey: ELASTIC_API_KEY }
-    });
-  }
-  return client;
 };
 
 const initializeHistoryIndex = async (esClient: Client) => {
@@ -114,8 +95,24 @@ export default async function handler(req: any, res: any) {
                         field: 'embedding',
                         query_vector: vector,
                         k: 5,
-                        num_candidates: 10
-                    }
+                        num_candidates: 10,
+                        filter: {
+                            bool: {
+                                must: [
+                                    {
+                                        match: {
+                                            content: query,
+                                        },
+                                    },
+                                ],
+                            },
+                        },
+                    },
+                    highlight: {
+                        fields: {
+                            content: {},
+                        },
+                    },
                 });
                 return res.status(200).json({ results: ragSearchResponse.hits.hits });
 

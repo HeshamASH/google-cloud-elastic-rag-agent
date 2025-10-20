@@ -132,7 +132,7 @@ const App: React.FC = () => {
           continue; 
 
         } else if (agentResponse.text) {
-          const finalModelMessage: ChatMessage = { id: uuidv4(), role: MessageRole.MODEL, content: agentResponse.text, sources: sourcesForFinalMessage };
+          const finalModelMessage: ChatMessage = { id: uuidv4(), role: MessageRole.MODEL, content: agentResponse.text, sources: agentResponse.sources };
           
           let finalMessages = [...currentMessages];
           if(thinkingMessageId) finalMessages = finalMessages.filter(m => m.id !== thinkingMessageId);
@@ -173,12 +173,12 @@ const App: React.FC = () => {
     if (!fileList || fileList.length === 0) return;
     setIsLoading(true);
     try {
-        const newDataset = await createDatasetFromFileList(fileList);
+        await createDatasetFromFileList(fileList);
         const newId = await createNewSession(AppMode.CUSTOM);
         
         // We need to fetch the newly created session to update it
         setSessions(prev => {
-            const newSession = { ...prev[newId], customDataset: newDataset, title: "Custom: " + Array.from(fileList).map(f => f.name).join(', ').substring(0, 40) };
+            const newSession = { ...prev[newId], title: "Custom: " + Array.from(fileList).map(f => f.name).join(', ').substring(0, 40) };
             updateSession(newSession); // Save the update to elastic
             return {...prev, [newId]: newSession };
         });

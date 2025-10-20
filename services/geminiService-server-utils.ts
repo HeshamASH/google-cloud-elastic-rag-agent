@@ -87,8 +87,8 @@ export const mapHistoryToApi = (chatHistory: ChatMessage[]): Content[] => {
           const [mimeType, data] = msg.image.split(';base64,');
           parts.push({ inlineData: { mimeType: mimeType.replace('data:', ''), data } });
       }
-      if (msg.toolCalls) parts.push({ toolCode: { functionCalls: msg.toolCalls } });
-      if (msg.toolResponses) parts.push({ toolResponse: { functionResponses: msg.toolResponses } });
+      if (msg.toolCalls) parts.push({ functionCall: { functionCalls: msg.toolCalls } });
+      if (msg.toolResponses) parts.push({ functionResponse: { functionResponses: msg.toolResponses } });
       
       let role: 'user' | 'model' | 'tool';
       switch(msg.role) {
