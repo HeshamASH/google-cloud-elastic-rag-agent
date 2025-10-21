@@ -48,7 +48,7 @@ const App: React.FC = () => {
       }
     };
     loadHistory();
-  }, [createNewSession]);
+  }, []);
 
   useEffect(() => {
     const fetchFiles = async () => {
